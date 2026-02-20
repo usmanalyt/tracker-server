@@ -3,9 +3,9 @@ import { StyleSheet, Text, View, Button, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import io from 'socket.io-client';
 
-// ▼▼▼ I HAVE PUT YOUR CORRECT IP ADDRESS HERE FOR YOU ▼▼▼
-const SOCKET_URL = 'http://192.168.1.108:3000'; 
-// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// ▼▼▼ PUT YOUR EXACT RENDER URL HERE ▼▼▼
+const SOCKET_URL = 'https://server-3j5i.onrender.com';
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 export default function App() {
   const [location, setLocation] = useState(null);
@@ -13,9 +13,11 @@ export default function App() {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // 1. Connect to Server
+    // 1. Connect to Server (Added the WebSocket trick!)
     console.log("Attempting to connect to:", SOCKET_URL);
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(SOCKET_URL, {
+        transports: ['websocket']
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -45,8 +47,8 @@ export default function App() {
     await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High,
-        timeInterval: 2000, // Update every 2 seconds
-        distanceInterval: 10, // Or every 10 meters
+        timeInterval: 2000, 
+        distanceInterval: 10, 
       },
       (newLocation) => {
         setLocation(newLocation);
@@ -58,7 +60,6 @@ export default function App() {
             lat: newLocation.coords.latitude,
             lng: newLocation.coords.longitude,
           });
-          // Update the screen text so you know it's working
           setStatus(`Sent: ${newLocation.coords.latitude.toFixed(4)}, ${newLocation.coords.longitude.toFixed(4)}`);
         }
       }
@@ -67,7 +68,9 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>iPhone Tracker</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>MY CUSTOM TRACKER</Text>
+      </View>
       <Text style={styles.status}>{status}</Text>
       
       <View style={styles.buttonContainer}>
@@ -78,24 +81,9 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  status: {
-    marginBottom: 20,
-    color: 'blue',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  buttonContainer: {
-    marginTop: 10,
-  }
+  container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  header: { backgroundColor: 'red', padding: 20, marginBottom: 50, width: '100%', alignItems: 'center' },
+  headerText: { color: 'white', fontWeight: 'bold', fontSize: 20 },
+  status: { marginBottom: 20, color: 'blue', textAlign: 'center', paddingHorizontal: 20 },
+  buttonContainer: { marginTop: 10 }
 });

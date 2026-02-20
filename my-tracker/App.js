@@ -1,42 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import * as Location from 'expo-location';
-import io from 'socket.io-client';
 
-// ▼▼▼▼ REPLACE THIS WITH YOUR LAPTOP IP ▼▼▼▼
-const SOCKET_URL = 'http://192.168.1.105:3000'; 
+// 1. The corrected import for the newest Socket.io version
+import { io } from 'socket.io-client';
 
+// 2. Your verified live Render URL
+const SOCKET_URL = 'https://server-3j5i.onrender.com'; 
 
 export default function App() {
-  const [status, setStatus] = useState('Disconnected');
+  const [location, setLocation] = useState(null);
+  const [status, setStatus] = useState('Connecting...');
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
+    // 3. Force pure WebSockets so React Native doesn't choke on XHR polling
+    const newSocket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        forceNew: true 
+    });
+    
     setSocket(newSocket);
-    newSocket.on('connect', () => setStatus('Connected to Server!'));
-    newSocket.on('connect_error', (err) => setStatus('Error: ' + err.message));
+
+    newSocket.on('connect', () => {
+      setStatus('Connected to Server!');
+    });
+
+    newSocket.on('connect_error', (err) => {
+        setStatus('Connect Error: ' + err.message);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+        setStatus('Disconnected: ' + reason);
+    });
+
     return () => newSocket.close();
   }, []);
 
   const startTracking = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
+    // 4. Fixed the naming conflict so it doesn't break your screen text!
+    let { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+    if (permissionStatus !== 'granted') {
       setStatus('Permission Denied');
       return;
     }
 
-    setStatus('Tracking...');
+    setStatus('Tracking started...');
+
     await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, timeInterval: 2000, distanceInterval: 10 },
-      (loc) => {
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 2000, 
+        distanceInterval: 10, 
+      },
+      (newLocation) => {
+        setLocation(newLocation);
+        
         if (socket) {
           socket.emit('update_location', {
-            id: 'iPhone8',
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
+            id: 'iPhone8', 
+            lat: newLocation.coords.latitude,
+            lng: newLocation.coords.longitude,
           });
-          setStatus(`Sent: ${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+          setStatus(`Sent: ${newLocation.coords.latitude.toFixed(4)}, ${newLocation.coords.longitude.toFixed(4)}`);
         }
       }
     );
@@ -44,13 +70,14 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {/* This Red Box proves it is YOUR custom app */}
       <View style={styles.header}>
         <Text style={styles.headerText}>MY CUSTOM TRACKER</Text>
       </View>
-      
       <Text style={styles.status}>{status}</Text>
-      <Button title="Start Tracking" onPress={startTracking} />
+      
+      <View style={styles.buttonContainer}>
+        <Button title="Start Tracking" onPress={startTracking} />
+      </View>
     </View>
   );
 }
@@ -59,5 +86,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   header: { backgroundColor: 'red', padding: 20, marginBottom: 50, width: '100%', alignItems: 'center' },
   headerText: { color: 'white', fontWeight: 'bold', fontSize: 20 },
-  status: { marginBottom: 20, color: 'blue' }
+  status: { marginBottom: 20, color: 'blue', textAlign: 'center', paddingHorizontal: 20 },
+  buttonContainer: { marginTop: 10 }
 });
