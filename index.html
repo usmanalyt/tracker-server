@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find My Device</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; width: 100%; }
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script>
+        // 1. Setup Map
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 2. Connect to the Server (Using your exact Laptop IP)
+        const socket = io('http://192.168.1.108:3000'); 
+
+        const markers = {};
+
+        // 3. Listen for Phone GPS
+        socket.on('location_changed', (data) => {
+            const { id, lat, lng } = data;
+            
+            console.log("Got location!", lat, lng); // Hidden test log
+
+            if (markers[id]) {
+                markers[id].setLatLng([lat, lng]);
+            } else {
+                markers[id] = L.marker([lat, lng]).addTo(map).bindPopup("My iPhone 8").openPopup();
+            }
+            map.setView([lat, lng], 16); // Zoom in close to your location
+        });
+    </script>
+</body>
+</html>

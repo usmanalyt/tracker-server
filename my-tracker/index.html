@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find My Device</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; width: 100%; }
+        body { margin: 0; }
+    </style>
+</head>   
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script>
+        // 1. Initialize the map
+        const map = L.map('map').setView([0, 0], 2); // Start at zoom level 2
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 2. Connect to our server
+        // IMPORTANT: If testing on the same PC, use localhost. 
+        // If testing from another device, use your PC's IP address.
+        const socket = io(); 
+
+        const markers = {};
+
+        // 3. Handle location updates
+        socket.on('location_changed', (data) => {
+            const { id, lat, lng } = data;
+
+            if (markers[id]) {
+                // If marker exists, just move it
+                markers[id].setLatLng([lat, lng]);
+            } else {
+                // If new device, create a marker
+                markers[id] = L.marker([lat, lng]).addTo(map)
+                    .bindPopup(`Device: ${id}`)
+                    .openPopup();
+            }
+            // Center map on the latest update
+            map.setView([lat, lng], 15);
+        });
+
+        // 4. Load initial state
+        socket.on('current_locations', (devices) => {
+            for (const id in devices) {
+                const { lat, lng } = devices[id];
+                markers[id] = L.marker([lat, lng]).addTo(map).bindPopup(id);
+            }
+        });
+    </script>
+</body>
+</html>
